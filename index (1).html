@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Google Photos Slideshow</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Cria slideshows lindos dos teus álbuns do Google Photos. Funciona como wallpaper ou screensaver.">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Slideshow">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            overflow: hidden;
+            background: black;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        /* Prevent iOS zoom on input focus */
+        input, button, select, textarea {
+            font-size: 16px;
+        }
+
+        /* iOS Safe Area Support */
+        @supports(padding: max(0px)) {
+            body {
+                padding-left: max(0px, env(safe-area-inset-left));
+                padding-right: max(0px, env(safe-area-inset-right));
+            }
+        }
+
+        /* Login Screen */
+        .login-screen {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 40px;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 35px;
+            line-height: 1.6;
+        }
+
+        .google-btn {
+            width: 100%;
+            padding: 16px;
+            background: white;
+            border: 2px solid #dadce0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .google-btn:hover {
+            background: #f8f9fa;
+            border-color: #dadce0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .features {
+            margin-top: 30px;
+            text-align: left;
+            color: #666;
+            font-size: 14px;
+            line-height: 2;
+        }
+
+        .loading-screen {
+            display: none;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .loading-subtext {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Setup Screen */
+        .setup-screen {
+            display: none;
+            min-height: 100vh;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .app-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-email {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #e5e5e5;
+        }
+
+        .setup-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .mode-card {
+            padding: 25px;
+            border: 3px solid #e5e5e5;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            background: white;
+        }
+
+        .mode-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .mode-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .mode-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .mode-title {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .mode-desc {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .albums-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .album-card {
+            border: 3px solid #e5e5e5;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .album-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+        }
+
+        .album-card.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .album-cover {
+            width: 100%;
+            padding-top: 100%;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .album-checkmark {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .album-card.selected .album-checkmark {
+            display: flex;
+        }
+
+        .album-info {
+            padding: 12px;
+        }
+
+        .album-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .album-count {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .settings-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .setting-item {
+            margin-bottom: 20px;
+        }
+
+        .setting-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e5e5e5;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .slider-value {
+            display: inline-block;
+            margin-left: 10px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: #f9f9f9;
+        }
+
+        .checkbox {
+            min-width: 22px;
+            width: 22px;
+            height: 22px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .checkbox.checked {
+            background: #667eea;
+            border-color: #667eea;
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .start-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .start-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .start-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #555;
+            margin-top: 20px;
+        }
+
+        /* Slideshow */
+        .slideshow-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            cursor: none;
+        }
+
+        .slideshow-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+
+        .slideshow-image.active {
+            opacity: 1;
+        }
+
+        .exit-hint {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 13px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .exit-hint.visible {
+            opacity: 1;
+        }
+
+        .clock-overlay {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            text-shadow: 0 2px 15px rgba(0,0,0,0.8);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .clock-overlay.visible {
+            opacity: 1;
+        }
+
+        .clock-time {
+            font-size: 72px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+
+        .clock-date {
+            font-size: 24px;
+            font-weight: 400;
+            opacity: 0.9;
+        }
+
+        .photo-info {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            color: white;
+            font-size: 14px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .photo-info.visible {
+            opacity: 0.7;
+        }
+
+        .error-message {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .settings-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .albums-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            
+            .clock-time {
+                font-size: 48px;
+            }
+            
+            .clock-date {
+                font-size: 18px;
+            }
+            
+            /* iOS/iPad specific */
+            .setup-content {
+                padding: 20px 15px 100px 15px; /* Extra bottom padding for iOS navbar */
+            }
+        }
+
+        /* Google TV / Android TV optimizations */
+        @media (min-width: 1280px) and (min-height: 720px) {
+            .mode-card, .album-card, button, .checkbox-item {
+                cursor: pointer;
+            }
+            
+            /* Larger touch targets for TV remotes */
+            .mode-card {
+                padding: 30px;
+                min-height: 180px;
+            }
+            
+            .album-card {
+                transition: all 0.2s;
+            }
+            
+            /* Focus states for TV navigation */
+            button:focus, .mode-card:focus, .album-card:focus {
+                outline: 4px solid #667eea;
+                outline-offset: 4px;
+            }
+            
+            .clock-time {
+                font-size: 96px;
+            }
+            
+            .clock-date {
+                font-size: 32px;
+            }
+        }
+
+        /* iPad landscape optimization */
+        @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+            .albums-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+        }
+
+        /* iPhone landscape - horizontal scroll for albums */
+        @media (max-width: 896px) and (orientation: landscape) {
+            .albums-grid {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overflow-y: hidden;
+                gap: 15px;
+                padding: 10px;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .album-card {
+                min-width: 180px;
+                flex-shrink: 0;
+            }
+            
+            .setup-content {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <div class="login-icon">📸</div>
+            <h1>Google Photos Slideshow</h1>
+            <p class="subtitle">Conecta-te ao Google Photos para criar wallpapers dinâmicos e screensavers dos teus álbuns</p>
+            
+            <button class="google-btn" onclick="loginWithGoogle()">
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Conectar com Google Photos
+            </button>
+
+            <div class="features">
+                <p>✓ Acesso seguro via OAuth 2.0</p>
+                <p>✓ Apenas leitura dos teus álbuns</p>
+                <p>✓ Nenhuma foto é armazenada</p>
+                <p>✓ Podes revogar acesso a qualquer momento</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">A carregar álbuns...</div>
+        <div class="loading-subtext" id="loadingSubtext">Isto pode demorar alguns segundos</div>
+    </div>
+
+    <!-- Setup Screen -->
+    <div id="setupScreen" class="setup-screen">
+        <div class="header">
+            <div class="header-left">
+                <div class="app-icon">📸</div>
+                <h2>Google Photos Slideshow</h2>
+            </div>
+            <div class="user-info">
+                <span class="user-email" id="userEmail"></span>
+                <button class="logout-btn" onclick="logout()">Sair</button>
+            </div>
+        </div>
+
+        <div class="setup-content">
+            <!-- Mode Selection -->
+            <div class="section">
+                <div class="section-title">🎯 Modo de Slideshow</div>
+                <div class="mode-selector">
+                    <div class="mode-card selected" id="modeAlbums" onclick="selectMode('albums')">
+                        <div class="mode-icon">📁</div>
+                        <div class="mode-title">Álbuns Específicos</div>
+                        <div class="mode-desc">Escolhe os álbuns que queres mostrar</div>
+                    </div>
+                    <div class="mode-card" id="modeRandom" onclick="selectMode('random')">
+                        <div class="mode-icon">🎲</div>
+                        <div class="mode-title">Todas as Fotos</div>
+                        <div class="mode-desc">Mostra aleatoriamente todas as tuas fotos</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Album Selection -->
+            <div class="section" id="albumSection">
+                <div class="section-title">📚 Selecionar Álbuns (<span id="selectedCount">0</span> selecionados)</div>
+                <div id="errorMessage"></div>
+                <div class="albums-grid" id="albumsGrid">
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">
+                        A carregar álbuns do Google Photos...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="section">
+                <div class="section-title">⚙️ Configurações</div>
+                <div class="settings-row">
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            Intervalo entre fotos: <span class="slider-value" id="intervalValue">10s</span>
+                        </label>
+                        <input type="range" class="slider" id="intervalSlider" min="3" max="60" value="10">
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">Opções de visualização:</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item" onclick="toggleOption('showClock')">
+                                <div class="checkbox checked" id="checkShowClock"></div>
+                                <span>Mostrar relógio</span>
+                            </div>
+                            <div class="checkbox-item" onclick="toggleOption('showInfo')">
+                                <div class="checkbox" id="checkShowInfo"></div>
+                                <span>Mostrar informação da foto</span>
+                            </div>
+                            <div class="checkbox-item" onclick="toggleOption('shuffle')">
+                                <div class="checkbox checked" id="checkShuffle"></div>
+                                <span>Ordem aleatória</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="start-btn" id="startBtn" onclick="startSlideshow()" disabled>
+                    🚀 Iniciar Slideshow
+                </button>
+
+                <div class="info-box">
+                    💡 <strong>Dica:</strong> Para sair do slideshow, move o rato ou clica em qualquer lugar. Pressiona ESC para sair rapidamente.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slideshow Screen -->
+    <div id="slideshowScreen" class="slideshow-screen">
+        <div id="slideshowImages"></div>
+        
+        <div class="exit-hint" id="exitHint">
+            <span id="exitHintText">Clica ou move o rato para sair • ESC</span>
+        </div>
+
+        <div class="clock-overlay" id="clockOverlay">
+            <div class="clock-time" id="clockTime">00:00</div>
+            <div class="clock-date" id="clockDate">Carregando...</div>
+        </div>
+
+        <div class="photo-info" id="photoInfo"></div>
+    </div>
+
+    <script>
+        // ===== GOOGLE PHOTOS API CONFIGURATION =====
+        const CLIENT_ID = '424732433419-6e48t7oq9c8ll65jie20c96fr65577fb.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyCI6lEpe6rK9mG3VrLXmPS9b3DKWiT6jvU';
+        const DISCOVERY_DOC = 'https://photoslibrary.googleapis.com/$discovery/rest?version=v1';
+        const SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly';
+
+        // State
+        let gapiInited = false;
+        let gisInited = false;
+        let tokenClient;
+        let accessToken = null;
+        let userAlbums = [];
+        let selectedAlbums = [];
+        let currentMode = 'albums';
+        let settings = {
+            interval: 10,
+            showClock: true,
+            showInfo: false,
+            shuffle: true
+        };
+        let allPhotos = [];
+        let currentPhotoIndex = 0;
+        let slideshowInterval = null;
+        let clockInterval = null;
+
+        // ===== GOOGLE API INITIALIZATION =====
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                console.log('Google APIs initialized');
+            }
+        }
+
+        // ===== AUTHENTICATION =====
+        function loginWithGoogle() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                accessToken = gapi.client.getToken().access_token;
+                showLoading('A carregar álbuns do Google Photos...');
+                await loadUserData();
+                await loadAlbums();
+                showSetupScreen();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        async function loadUserData() {
+            try {
+                const userInfo = await gapi.client.request({
+                    path: 'https://www.googleapis.com/oauth2/v2/userinfo'
+                });
+                document.getElementById('userEmail').textContent = userInfo.result.email;
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        function logout() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+            }
+            accessToken = null;
+            userAlbums = [];
+            selectedAlbums = [];
+            document.getElementById('setupScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+        }
+
+        // ===== GOOGLE PHOTOS API CALLS =====
+        async function loadAlbums() {
+            try {
+                let albums = [];
+                let nextPageToken = null;
+
+                do {
+                    const response = await gapi.client.request({
+                        path: 'https://photoslibrary.googleapis.com/v1/albums',
+                        params: {
+                            pageSize: 50,
+                            pageToken: nextPageToken
+                        }
+                    });
+
+                    if (response.result.albums) {
+                        albums = albums.concat(response.result.albums);
+                    }
+                    nextPageToken = response.result.nextPageToken;
+                } while (nextPageToken);
+
+                userAlbums = albums.filter(album => album.mediaItemsCount > 0);
+                renderAlbums();
+            } catch (error) {
+                console.error('Error loading albums:', error);
+                showError('Erro ao carregar álbuns. Tenta novamente.');
+            }
+        }
+
+        async function loadPhotosFromAlbum(albumId) {
+            try {
+                let photos = [];
+                let nextPageToken = null;
+
+                do {
+                    const response = await gapi.client.request({
+                        path: 'https://photoslibrary.googleapis.com/v1/mediaItems:search',
+                        method: 'POST',
+                        body: {
+                            albumId: albumId,
+                            pageSize: 100,
+                            pageToken: nextPageToken
+                        }
+                    });
+
+                    if (response.result.mediaItems) {
+                        // Filter only images (no videos)
+                        const images = response.result.mediaItems.filter(item => 
+                            item.mimeType && item.mimeType.startsWith('image/')
+                        );
+                        photos = photos.concat(images);
+                    }
+                    nextPageToken = response.result.nextPageToken;
+                } while (nextPageToken);
+
+                return photos;
+            } catch (error) {
+                console.error('Error loading photos from album:', error);
+                return [];
+            }
+        }
+
+        async function loadAllPhotos() {
+            try {
+                let photos = [];
+                let nextPageToken = null;
+
+                showLoading('A carregar todas as fotos...', 'Isto pode demorar alguns minutos');
+
+                do {
+                    const response = await gapi.client.request({
+                        path: 'https://photoslibrary.googleapis.com/v1/mediaItems',
+                        params: {
+                            pageSize: 100,
+                            pageToken: nextPageToken
+                        }
+                    });
+
+                    if (response.result.mediaItems) {
+                        const images = response.result.mediaItems.filter(item => 
+                            item.mimeType && item.mimeType.startsWith('image/')
+                        );
+                        photos = photos.concat(images);
+                    }
+                    nextPageToken = response.result.nextPageToken;
+                } while (nextPageToken);
+
+                return photos;
+            } catch (error) {
+                console.error('Error loading all photos:', error);
+                return [];
+            }
+        }
+
+        // ===== UI FUNCTIONS =====
+        function showLoading(text, subtext = '') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingSubtext').textContent = subtext;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('setupScreen').style.display = 'none';
+            document.getElementById('loadingScreen').style.display = 'flex';
+        }
+
+        function showSetupScreen() {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('setupScreen').style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+
+        function renderAlbums() {
+            const grid = document.getElementById('albumsGrid');
+            
+            if (userAlbums.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Nenhum álbum encontrado no Google Photos</div>';
+                return;
+            }
+
+            grid.innerHTML = userAlbums.map(album => `
+                <div class="album-card" id="album-${album.id}" onclick="toggleAlbum('${album.id}')">
+                    <div class="album-cover" style="background-image: url('${album.coverPhotoBaseUrl}=w400-h400-c')">
+                        <div class="album-checkmark">✓</div>
+                    </div>
+                    <div class="album-info">
+                        <div class="album-name">${album.title}</div>
+                        <div class="album-count">${album.mediaItemsCount} items</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectMode(mode) {
+            currentMode = mode;
+            document.getElementById('modeAlbums').classList.toggle('selected', mode === 'albums');
+            document.getElementById('modeRandom').classList.toggle('selected', mode === 'random');
+            
+            const albumSection = document.getElementById('albumSection');
+            const startBtn = document.getElementById('startBtn');
+            
+            if (mode === 'random') {
+                albumSection.style.display = 'none';
+                startBtn.disabled = false;
+            } else {
+                albumSection.style.display = 'block';
+                startBtn.disabled = selectedAlbums.length === 0;
+            }
+        }
+
+        function toggleAlbum(albumId) {
+            if (currentMode === 'random') return;
+            
+            const card = document.getElementById(`album-${albumId}`);
+            const index = selectedAlbums.indexOf(albumId);
+            
+            if (index === -1) {
+                selectedAlbums.push(albumId);
+                card.classList.add('selected');
+            } else {
+                selectedAlbums.splice(index, 1);
+                card.classList.remove('selected');
+            }
+            
+            document.getElementById('selectedCount').textContent = selectedAlbums.length;
+            document.getElementById('startBtn').disabled = selectedAlbums.length === 0;
+        }
+
+        function toggleOption(option) {
+            settings[option] = !settings[option];
+            const checkbox = document.getElementById('check' + option.charAt(0).toUpperCase() + option.slice(1));
+            checkbox.classList.toggle('checked', settings[option]);
+        }
+
+        document.getElementById('intervalSlider').addEventListener('input', function() {
+            settings.interval = parseInt(this.value);
+            document.getElementById('intervalValue').textContent = settings.interval + 's';
+        });
+
+        // ===== SLIDESHOW FUNCTIONS =====
+        async function startSlideshow() {
+            showLoading('A preparar slideshow...');
+            
+            allPhotos = [];
+            
+            try {
+                if (currentMode === 'random') {
+                    const photos = await loadAllPhotos();
+                    allPhotos = photos;
+                } else {
+                    for (const albumId of selectedAlbums) {
+                        const photos = await loadPhotosFromAlbum(albumId);
+                        allPhotos = allPhotos.concat(photos);
+                    }
+                }
+
+                if (allPhotos.length === 0) {
+                    alert('Nenhuma foto encontrada nos álbuns selecionados');
+                    showSetupScreen();
+                    return;
+                }
+
+                if (settings.shuffle) {
+                    allPhotos = shuffleArray(allPhotos);
+                }
+
+                // Prepare slideshow
+                const container = document.getElementById('slideshowImages');
+                container.innerHTML = allPhotos.map((photo, index) => {
+                    const imageUrl = photo.baseUrl + '=w1920-h1080';
+                    return `<img src="${imageUrl}" class="slideshow-image ${index === 0 ? 'active' : ''}" alt="${photo.filename || 'Photo'}">`;
+                }).join('');
+
+                currentPhotoIndex = 0;
+                
+                // Update exit hint based on device
+                const exitHintText = document.getElementById('exitHintText');
+                if ('ontouchstart' in window) {
+                    exitHintText.textContent = '👆 Toca para ver controlos • Desliza para baixo para sair';
+                } else {
+                    exitHintText.textContent = 'Clica ou move o rato para sair • ESC • ← →';
+                }
+                
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('slideshowScreen').style.display = 'block';
+                document.body.style.cursor = 'none';
+                
+                startAutoPlay();
+                if (settings.showClock) {
+                    startClock();
+                }
+                updatePhotoInfo();
+                setupMouseDetection();
+                requestFullscreen();
+            } catch (error) {
+                console.error('Error starting slideshow:', error);
+                alert('Erro ao iniciar slideshow. Tenta novamente.');
+                showSetupScreen();
+            }
+        }
+
+        function startAutoPlay() {
+            stopAutoPlay();
+            slideshowInterval = setInterval(() => {
+                nextPhoto();
+            }, settings.interval * 1000);
+        }
+
+        function stopAutoPlay() {
+            if (slideshowInterval) {
+                clearInterval(slideshowInterval);
+            }
+        }
+
+        function nextPhoto() {
+            currentPhotoIndex = (currentPhotoIndex + 1) % allPhotos.length;
+            showPhoto(currentPhotoIndex);
+        }
+
+        function showPhoto(index) {
+            const images = document.querySelectorAll('.slideshow-image');
+            images.forEach((img, i) => {
+                img.classList.toggle('active', i === index);
+            });
+            updatePhotoInfo();
+        }
+
+        function updatePhotoInfo() {
+            const photoInfo = document.getElementById('photoInfo');
+            const currentPhoto = allPhotos[currentPhotoIndex];
+            photoInfo.textContent = `${currentPhoto.filename || 'Foto'} • ${currentPhotoIndex + 1} de ${allPhotos.length}`;
+            photoInfo.classList.toggle('visible', settings.showInfo);
+        }
+
+        function startClock() {
+            updateClock();
+            clockInterval = setInterval(updateClock, 1000);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString('pt-PT', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long' 
+            });
+            
+            document.getElementById('clockTime').textContent = timeStr;
+            document.getElementById('clockDate').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+            document.getElementById('clockOverlay').classList.add('visible');
+        }
+
+        function setupMouseDetection() {
+            let mouseTimeout = null;
+            let mouseMoved = false;
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            const showExitHint = () => {
+                if (!mouseMoved) {
+                    mouseMoved = true;
+                    document.body.style.cursor = 'default';
+                    document.getElementById('exitHint').classList.add('visible');
+                    
+                    if (mouseTimeout) {
+                        clearTimeout(mouseTimeout);
+                    }
+                    
+                    mouseTimeout = setTimeout(() => {
+                        document.body.style.cursor = 'none';
+                        document.getElementById('exitHint').classList.remove('visible');
+                        mouseMoved = false;
+                    }, 3000);
+                }
+            };
+            
+            // Mouse/Touch movement detection
+            document.addEventListener('mousemove', showExitHint);
+            
+            // Touch gestures for mobile
+            const slideshowScreen = document.getElementById('slideshowScreen');
+            
+            slideshowScreen.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                showExitHint();
+            });
+            
+            slideshowScreen.addEventListener('touchend', (e) => {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchStartX - touchEndX;
+                const diffY = touchStartY - touchEndY;
+                
+                // Swipe left (next photo)
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                    if (diffX > 0) {
+                        nextPhoto();
+                    } else {
+                        previousPhoto();
+                    }
+                }
+                // Swipe down (exit)
+                else if (diffY < -100 && Math.abs(diffY) > Math.abs(diffX)) {
+                    exitSlideshow();
+                }
+                // Tap (show controls)
+                else if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+                    showExitHint();
+                }
+            });
+            
+            // Click to exit (PC)
+            slideshowScreen.addEventListener('click', (e) => {
+                // Only exit on click if not a touch device
+                if (!('ontouchstart' in window)) {
+                    exitSlideshow();
+                }
+            });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                switch(e.key) {
+                    case 'Escape':
+                        exitSlideshow();
+                        break;
+                    case 'ArrowLeft':
+                        previousPhoto();
+                        break;
+                    case 'ArrowRight':
+                        nextPhoto();
+                        break;
+                    case ' ':
+                        e.preventDefault();
+                        togglePlayPause();
+                        break;
+                }
+            });
+        }
+        
+        function previousPhoto() {
+            currentPhotoIndex = (currentPhotoIndex - 1 + allPhotos.length) % allPhotos.length;
+            showPhoto(currentPhotoIndex);
+        }
+        
+        function togglePlayPause() {
+            if (slideshowInterval) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        function exitSlideshow() {
+            stopAutoPlay();
+            if (clockInterval) {
+                clearInterval(clockInterval);
+            }
+            
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+            
+            document.getElementById('slideshowScreen').style.display = 'none';
+            document.getElementById('setupScreen').style.display = 'block';
+            document.body.style.cursor = 'default';
+        }
+
+        function requestFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    console.log('Fullscreen request failed:', err);
+                });
+            }
+        }
+
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        // ===== PWA SERVICE WORKER REGISTRATION =====
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registered - App pode ser instalada!');
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // ===== PWA INSTALL PROMPT =====
+        let deferredPrompt;
+        const installButton = document.createElement('button');
+        installButton.innerHTML = '📱 Instalar App';
+        installButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            z-index: 10000;
+            display: none;
+            transition: all 0.3s;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        `;
+        
+        installButton.addEventListener('mouseover', () => {
+            installButton.style.transform = 'scale(1.05) translateY(-2px)';
+            installButton.style.boxShadow = '0 12px 30px rgba(102, 126, 234, 0.6)';
+        });
+        
+        installButton.addEventListener('mouseout', () => {
+            installButton.style.transform = 'scale(1)';
+            installButton.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.5)';
+        });
+        
+        document.body.appendChild(installButton);
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button only on login and setup screens
+            const loginScreen = document.getElementById('loginScreen');
+            const setupScreen = document.getElementById('setupScreen');
+            
+            if (loginScreen.style.display !== 'none' || setupScreen.style.display !== 'none') {
+                installButton.style.display = 'block';
+            }
+            
+            console.log('💡 App pode ser instalada! Clica no botão "Instalar App"');
+        });
+
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                // iOS detection
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIOS) {
+                    alert('Para instalar no iOS:\n\n1. Toca no botão de Partilhar (quadrado com seta)\n2. Seleciona "Adicionar ao Ecrã Principal"\n3. Confirma');
+                }
+                return;
+            }
+            
+            installButton.style.display = 'none';
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            
+            if (outcome === 'accepted') {
+                console.log('✅ App instalada com sucesso!');
+            } else {
+                console.log('❌ Instalação cancelada');
+                // Show button again if cancelled
+                setTimeout(() => {
+                    installButton.style.display = 'block';
+                }, 3000);
+            }
+            
+            deferredPrompt = null;
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('🎉 PWA instalada com sucesso!');
+            installButton.style.display = 'none';
+        });
+
+        // Hide install button in slideshow mode
+        const slideshowScreen = document.getElementById('slideshowScreen');
+        const observer = new MutationObserver(() => {
+            if (slideshowScreen.style.display === 'block') {
+                installButton.style.display = 'none';
+            }
+        });
+        observer.observe(slideshowScreen, { attributes: true, attributeFilter: ['style'] });
+    </script>
+
+    <!-- Load Google APIs -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</body>
+</html>

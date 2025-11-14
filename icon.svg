@@ -1,0 +1,33 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" rx="115" fill="url(#bg)"/>
+  
+  <!-- Camera/Photo icon -->
+  <g transform="translate(256, 256)">
+    <!-- Photo frame -->
+    <rect x="-140" y="-100" width="280" height="200" rx="20" fill="white" opacity="0.9"/>
+    
+    <!-- Mountain landscape in photo -->
+    <path d="M -120,-20 L -80,-60 L -40,-30 L 0,-70 L 40,-40 L 80,-80 L 120,-40 L 120,80 L -120,80 Z" 
+          fill="#667eea" opacity="0.3"/>
+    
+    <!-- Sun in photo -->
+    <circle cx="-70" cy="-50" r="20" fill="#FFD700" opacity="0.8"/>
+    
+    <!-- Play button overlay -->
+    <circle cx="0" cy="20" r="50" fill="white" opacity="0.95"/>
+    <path d="M -15,0 L 25,20 L -15,40 Z" fill="#667eea"/>
+  </g>
+  
+  <!-- Corner decoration -->
+  <circle cx="430" cy="82" r="15" fill="white" opacity="0.3"/>
+  <circle cx="470" cy="120" r="10" fill="white" opacity="0.2"/>
+</svg>
