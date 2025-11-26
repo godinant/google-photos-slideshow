@@ -937,57 +937,69 @@
 
         // ===== GOOGLE PHOTOS API CALLS =====
         async function loadAlbums() {
-            try {
-                const token = gapi.client.getToken();
-                if (!token || !token.access_token) {
-                    console.error('❌ No access token available');
-                    showError('Erro de autenticação. Tenta fazer login novamente.');
-                    return;
-                }
-
-                console.log('🔄 Loading albums with token:', token.access_token.substring(0, 30) + '...');
-
-                let albums = [];
-                let nextPageToken = null;
-
-                do {
-                    const url = nextPageToken 
-                        ? `https://photoslibrary.googleapis.com/v1/albums?pageSize=50&pageToken=${nextPageToken}`
-                        : 'https://photoslibrary.googleapis.com/v1/albums?pageSize=50';
-
-                    console.log('📡 Fetching:', url);
-
-                    const response = await fetch(url, {
-                        headers: {
-                            'Authorization': `Bearer ${token.access_token}`
-                        }
-                    });
-
-                    console.log('📥 Response status:', response.status);
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('❌ Response error:', errorText);
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-                    console.log('✅ Albums data received:', data);
-
-                    if (data.albums) {
-                        albums = albums.concat(data.albums);
-                    }
-                    nextPageToken = data.nextPageToken;
-                } while (nextPageToken);
-
-                userAlbums = albums.filter(album => album.mediaItemsCount > 0);
-                console.log(`✅ Loaded ${userAlbums.length} albums`);
-                renderAlbums();
-            } catch (error) {
-                console.error('❌ Error loading albums:', error);
-                showError('Erro ao carregar álbuns. Verifica se a Photos Library API está ativada no Google Cloud Console.');
-            }
+    try {
+        const token = gapi.client.getToken();
+        if (!token || !token.access_token) {
+            console.error('❌ No access token available');
+            showError('Erro de autenticação. Tenta fazer login novamente.');
+            return;
         }
+
+        console.log('🔄 Loading albums with token:', token.access_token.substring(0, 30) + '...');
+
+        let albums = [];
+        let nextPageToken = null;
+
+        const url = 'https://photoslibrary.googleapis.com/v1/albums?pageSize=50';
+        
+        console.log('📡 Fetching:', url);
+        console.log('📤 Headers:', {
+            'Authorization': `Bearer ${token.access_token.substring(0, 30)}...`
+        });
+
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token.access_token}`
+            }
+        });
+
+        console.log('📥 Response status:', response.status);
+        console.log('📥 Response headers:', [...response.headers.entries()]);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Response body:', errorText);
+            
+            // Tentar parsear como JSON
+            try {
+                const errorJson = JSON.parse(errorText);
+                console.error('❌ Error JSON:', errorJson);
+                
+                if (errorJson.error) {
+                    showError(`Erro ${response.status}: ${errorJson.error.message || errorJson.error.status}`);
+                }
+            } catch (e) {
+                console.error('❌ Could not parse error as JSON');
+            }
+            
+            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Albums data received:', data);
+
+        if (data.albums) {
+            albums = albums.concat(data.albums);
+        }
+
+        userAlbums = albums.filter(album => album.mediaItemsCount > 0);
+        console.log(`✅ Loaded ${userAlbums.length} albums`);
+        renderAlbums();
+    } catch (error) {
+        console.error('❌ Error loading albums:', error);
+        showError('Erro ao carregar álbuns. Verifica se a Photos Library API está ativada no Google Cloud Console.');
+    }
+}
 
         async function loadPhotosFromAlbum(albumId) {
             try {
