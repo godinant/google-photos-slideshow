@@ -863,15 +863,27 @@
         // ===== AUTHENTICATION =====
         function loginWithGoogle() {
             tokenClient.callback = async (resp) => {
-                if (resp.error !== undefined) {
-                    throw (resp);
-                }
-                accessToken = gapi.client.getToken().access_token;
-                showLoading('A carregar álbuns do Google Photos...');
-                await loadUserData();
-                await loadAlbums();
-                showSetupScreen();
-            };
+    if (resp.error !== undefined) {
+        throw (resp);
+    }
+    accessToken = gapi.client.getToken().access_token;
+    
+    // 🔍 DEBUG: Verificar scopes do token
+    console.log('🔑 Access Token:', accessToken.substring(0, 20) + '...');
+    try {
+        const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`);
+        const tokenInfo = await tokenInfoResponse.json();
+        console.log('✅ Token Info:', tokenInfo);
+        console.log('📋 Scopes no token:', tokenInfo.scope);
+    } catch (e) {
+        console.error('❌ Erro ao verificar token:', e);
+    }
+    
+    showLoading('A carregar álbuns do Google Photos...');
+    await loadUserData();
+    await loadAlbums();
+    showSetupScreen();
+};
 
             if (gapi.client.getToken() === null) {
                 tokenClient.requestAccessToken({prompt: 'consent'});
