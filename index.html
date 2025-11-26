@@ -804,7 +804,7 @@
         // ===== GOOGLE PHOTOS API CONFIGURATION =====
         const CLIENT_ID = '730855218910-rofev5crseiaovp42j9u36j8odkhm2l5.apps.googleusercontent.com';
         const SCOPES = [
-            'https://www.googleapis.com/auth/photoslibrary.readonly',
+            'https://www.googleapis.com/auth/photoslibrary',
             'https://www.googleapis.com/auth/userinfo.email',
             'https://www.googleapis.com/auth/userinfo.profile',
             'openid'
@@ -849,8 +849,8 @@
                         console.log('✅ Token Info:', tokenInfo);
                         console.log('📋 Scopes no token:', tokenInfo.scope);
 
-                        if (!tokenInfo.scope.includes('photoslibrary.readonly')) {
-                            console.error('❌ Token não tem o scope photoslibrary.readonly!');
+                        if (!tokenInfo.scope.includes('photoslibrary')) {
+                            console.error('❌ Token não tem o scope photoslibrary!');
                             alert('Erro: Permissões insuficientes. Aceita todas as permissões ao fazer login.');
                             return;
                         }
