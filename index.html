@@ -800,15 +800,17 @@
     </div>
 
     <script>
+        <script>
         // ===== GOOGLE PHOTOS API CONFIGURATION =====
         const CLIENT_ID = '730855218910-rofev5crseiaovp42j9u36j8odkhm2l5.apps.googleusercontent.com';
-        const API_KEY = 'AIzaSyBpI8I47sCI5dqAWYSuDcjoqtKXbYgWpfw';
-        const DISCOVERY_DOC = 'https://photoslibrary.googleapis.com/$discovery/rest?version=v1';
-        const SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+        const SCOPES = [
+            'https://www.googleapis.com/auth/photoslibrary.readonly',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile',
+            'openid'
+        ].join(' ');
 
         // State
-        let gapiInited = false;
-        let gisInited = false;
         let tokenClient;
         let accessToken = null;
         let userAlbums = [];
@@ -826,87 +828,67 @@
         let clockInterval = null;
 
         // ===== GOOGLE API INITIALIZATION =====
-        function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
-        }
-
-        async function initializeGapiClient() {
-            await gapi.client.init({
-                apiKey: API_KEY,
-                discoveryDocs: [DISCOVERY_DOC],
-            });
-            gapiInited = true;
-            maybeEnableButtons();
-        }
-
         function gisLoaded() {
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
                 scope: SCOPES,
-                callback: '',
-            });
-            gisInited = true;
-            maybeEnableButtons();
-        }
+                callback: async (response) => {
+                    if (response.error !== undefined) {
+                        console.error('❌ OAuth Error:', response);
+                        alert('Erro ao fazer login. Tenta novamente.');
+                        return;
+                    }
 
-        function maybeEnableButtons() {
-            if (gapiInited && gisInited) {
-                console.log('✅ Google APIs initialized');
-            }
+                    accessToken = response.access_token;
+                    console.log('🔑 Access Token recebido:', accessToken.substring(0, 30) + '...');
+
+                    // Verificar scopes do token
+                    try {
+                        const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`);
+                        const tokenInfo = await tokenInfoResponse.json();
+                        console.log('✅ Token Info:', tokenInfo);
+                        console.log('📋 Scopes no token:', tokenInfo.scope);
+
+                        if (!tokenInfo.scope.includes('photoslibrary.readonly')) {
+                            console.error('❌ Token não tem o scope photoslibrary.readonly!');
+                            alert('Erro: Permissões insuficientes. Aceita todas as permissões ao fazer login.');
+                            return;
+                        }
+
+                        console.log('✅ Token válido com todos os scopes!');
+                    } catch (e) {
+                        console.error('❌ Erro ao verificar token:', e);
+                    }
+
+                    showLoading('A carregar álbuns do Google Photos...');
+                    await loadUserData();
+                    await loadAlbums();
+                    showSetupScreen();
+                }
+            });
+            console.log('✅ Google Identity Services initialized');
         }
 
         // ===== AUTHENTICATION =====
         function loginWithGoogle() {
-            tokenClient.callback = async (resp) => {
-                if (resp.error !== undefined) {
-                    console.error('❌ OAuth Error:', resp);
-                    throw (resp);
-                }
-
-                accessToken = gapi.client.getToken().access_token;
-
-                // 🔍 DEBUG: Verificar scopes do token
-                console.log('🔑 Access Token recebido:', accessToken.substring(0, 30) + '...');
-
-                try {
-                    const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`);
-                    const tokenInfo = await tokenInfoResponse.json();
-                    console.log('✅ Token Info completo:', tokenInfo);
-                    console.log('📋 Scopes no token:', tokenInfo.scope);
-
-                    // Verificar se tem o scope necessário
-                    if (!tokenInfo.scope.includes('photoslibrary.readonly')) {
-                        console.error('❌ ERRO: Token não tem o scope photoslibrary.readonly!');
-                        alert('Erro: Permissões insuficientes. Por favor, aceita todas as permissões ao fazer login.');
-                        return;
-                    }
-
-                    console.log('✅ Token tem todos os scopes necessários!');
-                } catch (e) {
-                    console.error('❌ Erro ao verificar token:', e);
-                }
-
-                showLoading('A carregar álbuns do Google Photos...');
-                await loadUserData();
-                await loadAlbums();
-                showSetupScreen();
-            };
-
-            // Sempre força novo consentimento para garantir scopes corretos
-            tokenClient.requestAccessToken({prompt: 'consent'});
+            if (!tokenClient) {
+                alert('A carregar... Aguarda um momento e tenta novamente.');
+                return;
+            }
+            // Força novo consentimento para garantir scopes corretos
+            tokenClient.requestAccessToken({ prompt: 'consent' });
         }
 
         async function loadUserData() {
             try {
-                const token = gapi.client.getToken();
-                if (!token || !token.access_token) {
+                if (!accessToken) {
                     console.error('❌ No access token available');
                     return;
                 }
 
                 const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
                     headers: {
-                        'Authorization': `Bearer ${token.access_token}`
+                        'Authorization': `Bearer ${accessToken}`
                     }
                 });
 
@@ -923,10 +905,10 @@
         }
 
         function logout() {
-            const token = gapi.client.getToken();
-            if (token !== null) {
-                google.accounts.oauth2.revoke(token.access_token);
-                gapi.client.setToken('');
+            if (accessToken) {
+                google.accounts.oauth2.revoke(accessToken, () => {
+                    console.log('✅ Access revoked');
+                });
             }
             accessToken = null;
             userAlbums = [];
@@ -937,74 +919,68 @@
 
         // ===== GOOGLE PHOTOS API CALLS =====
         async function loadAlbums() {
-    try {
-        const token = gapi.client.getToken();
-        if (!token || !token.access_token) {
-            console.error('❌ No access token available');
-            showError('Erro de autenticação. Tenta fazer login novamente.');
-            return;
-        }
-
-        console.log('🔄 Loading albums with token:', token.access_token.substring(0, 30) + '...');
-
-        let albums = [];
-        let nextPageToken = null;
-
-        const url = 'https://photoslibrary.googleapis.com/v1/albums?pageSize=50';
-        
-        console.log('📡 Fetching:', url);
-        console.log('📤 Headers:', {
-            'Authorization': `Bearer ${token.access_token.substring(0, 30)}...`
-        });
-
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${token.access_token}`
-            }
-        });
-
-        console.log('📥 Response status:', response.status);
-        console.log('📥 Response headers:', [...response.headers.entries()]);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Response body:', errorText);
-            
-            // Tentar parsear como JSON
             try {
-                const errorJson = JSON.parse(errorText);
-                console.error('❌ Error JSON:', errorJson);
-                
-                if (errorJson.error) {
-                    showError(`Erro ${response.status}: ${errorJson.error.message || errorJson.error.status}`);
+                if (!accessToken) {
+                    console.error('❌ No access token available');
+                    showError('Erro de autenticação. Tenta fazer login novamente.');
+                    return;
                 }
-            } catch (e) {
-                console.error('❌ Could not parse error as JSON');
+
+                console.log('🔄 Loading albums...');
+
+                let albums = [];
+                let nextPageToken = null;
+
+                do {
+                    const url = nextPageToken
+                        ? `https://photoslibrary.googleapis.com/v1/albums?pageSize=50&pageToken=${nextPageToken}`
+                        : 'https://photoslibrary.googleapis.com/v1/albums?pageSize=50';
+
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    });
+
+                    console.log('📥 Response status:', response.status);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('❌ Response error:', errorText);
+
+                        try {
+                            const errorJson = JSON.parse(errorText);
+                            if (errorJson.error) {
+                                showError(`Erro ${response.status}: ${errorJson.error.message || errorJson.error.status}`);
+                            }
+                        } catch (e) {
+                            showError(`Erro ${response.status}: ${response.statusText}`);
+                        }
+
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.albums) {
+                        albums = albums.concat(data.albums);
+                    }
+
+                    nextPageToken = data.nextPageToken;
+                } while (nextPageToken);
+
+                userAlbums = albums.filter(album => album.mediaItemsCount > 0);
+                console.log(`✅ Loaded ${userAlbums.length} albums`);
+                renderAlbums();
+            } catch (error) {
+                console.error('❌ Error loading albums:', error);
+                showError('Erro ao carregar álbuns. Verifica se a Photos Library API está ativada no Google Cloud Console.');
             }
-            
-            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
         }
-
-        const data = await response.json();
-        console.log('✅ Albums data received:', data);
-
-        if (data.albums) {
-            albums = albums.concat(data.albums);
-        }
-
-        userAlbums = albums.filter(album => album.mediaItemsCount > 0);
-        console.log(`✅ Loaded ${userAlbums.length} albums`);
-        renderAlbums();
-    } catch (error) {
-        console.error('❌ Error loading albums:', error);
-        showError('Erro ao carregar álbuns. Verifica se a Photos Library API está ativada no Google Cloud Console.');
-    }
-}
 
         async function loadPhotosFromAlbum(albumId) {
             try {
-                const token = gapi.client.getToken();
-                if (!token || !token.access_token) {
+                if (!accessToken) {
                     console.error('❌ No access token available');
                     return [];
                 }
@@ -1016,7 +992,7 @@
                     const response = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems:search', {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${token.access_token}`,
+                            'Authorization': `Bearer ${accessToken}`,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
@@ -1033,7 +1009,7 @@
                     const data = await response.json();
 
                     if (data.mediaItems) {
-                        const images = data.mediaItems.filter(item => 
+                        const images = data.mediaItems.filter(item =>
                             item.mimeType && item.mimeType.startsWith('image/')
                         );
                         photos = photos.concat(images);
@@ -1050,8 +1026,7 @@
 
         async function loadAllPhotos() {
             try {
-                const token = gapi.client.getToken();
-                if (!token || !token.access_token) {
+                if (!accessToken) {
                     console.error('❌ No access token available');
                     return [];
                 }
@@ -1068,7 +1043,7 @@
 
                     const response = await fetch(url, {
                         headers: {
-                            'Authorization': `Bearer ${token.access_token}`
+                            'Authorization': `Bearer ${accessToken}`
                         }
                     });
 
@@ -1281,10 +1256,10 @@
         function updateClock() {
             const now = new Date();
             const timeStr = now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-            const dateStr = now.toLocaleDateString('pt-PT', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long' 
+            const dateStr = now.toLocaleDateString('pt-PT', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long'
             });
 
             document.getElementById('clockTime').textContent = timeStr;
@@ -1423,7 +1398,7 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service-worker.js')
                     .then(registration => {
-                        console.log('✅ Service Worker registered');
+                        console.log('✅ Service Worker registered - App pode ser instalada!');
                     })
                     .catch(error => {
                         console.log('Service Worker registration failed:', error);
@@ -1477,7 +1452,7 @@
                 installButton.style.display = 'block';
             }
 
-            console.log('💡 App pode ser instalada!');
+            console.log('💡 App pode ser instalada! Clica no botão "Instalar App"');
         });
 
         installButton.addEventListener('click', async () => {
@@ -1518,6 +1493,11 @@
         });
         observer.observe(slideshowScreen, { attributes: true, attributeFilter: ['style'] });
     </script>
+
+    <!-- Load Google Identity Services (apenas este!) -->
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</body>
+</html>
 
     <!-- Load Google APIs -->
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
