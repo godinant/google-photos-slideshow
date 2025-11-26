@@ -809,7 +809,7 @@
         const CLIENT_ID = '730855218910-rofev5crseiaovp42j9u36j8odkhm2l5.apps.googleusercontent.com';
         const API_KEY = 'AIzaSyBpI8I47sCI5dqAWYSuDcjoqtKXbYgWpfw';
         const DISCOVERY_DOC = 'https://photoslibrary.googleapis.com/$discovery/rest?version=v1';
-        const SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly';
+        const SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
         // State
         let gapiInited = false;
@@ -915,7 +915,7 @@
                         path: 'https://photoslibrary.googleapis.com/v1/albums',
                         params: {
                             pageSize: 50,
-                            pageToken: nextPageToken
+                            ...(nextPageToken && { pageToken: nextPageToken })
                         }
                     });
 
