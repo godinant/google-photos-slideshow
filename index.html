@@ -808,14 +808,11 @@
         // ===== GOOGLE PHOTOS API CONFIGURATION =====
         const CLIENT_ID = '404117670774-m2c51ak0d7b6hamhe82evpp7pd5qc4th.apps.googleusercontent.com';
         const API_KEY = 'AIzaSyCFrM5zsjz4p7eqb0tC7MKhkw1erHgVwlE';
-        const DISCOVERY_DOC = 'https://photoslibrary.googleapis.com/$discovery/rest?version=v1';
         const SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly';
 
         // State
-        let gapiInited = false;
         let gisInited = false;
         let tokenClient;
-        let accessToken = null;
         let userAlbums = [];
         let selectedAlbums = [];
         let currentMode = 'albums';
@@ -829,11 +826,9 @@
         let currentPhotoIndex = 0;
         let slideshowInterval = null;
         let clockInterval = null;
+        let currentAccessToken = null;
 
         // ===== GOOGLE API INITIALIZATION =====
-        let gapiInited = true; // Not using gapi anymore, just GIS
-        let gisInited = false;
-
         function gisLoaded() {
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
@@ -841,17 +836,8 @@
                 callback: '', // defined later
             });
             gisInited = true;
-            maybeEnableButtons();
+            console.log('✅ Google Identity Services initialized');
         }
-
-        function maybeEnableButtons() {
-            if (gapiInited && gisInited) {
-                console.log('✅ Google Identity Services initialized');
-            }
-        }
-
-        // ===== AUTHENTICATION =====
-        let currentAccessToken = null;
 
         function loginWithGoogle() {
             tokenClient.callback = async (resp) => {
