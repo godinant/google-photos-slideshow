@@ -852,6 +852,17 @@
                 console.log('✅ Access Token received');
                 console.log('📋 Scopes:', resp.scope);
                 
+                // 🧪 TESTE: Validar token diretamente no Google
+                try {
+                    const tokenInfoResponse = await fetch(
+                        `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${currentAccessToken}`
+                    );
+                    const tokenInfo = await tokenInfoResponse.json();
+                    console.log('🔍 Token Info from Google:', JSON.stringify(tokenInfo, null, 2));
+                } catch (err) {
+                    console.error('❌ Error validating token:', err);
+                }
+                
                 showLoading('A carregar álbuns do Google Photos...');
                 await loadUserData();
                 await loadAlbums();
