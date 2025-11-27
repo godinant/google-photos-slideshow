@@ -1,4 +1,4 @@
-const CACHE_NAME = 'google-photos-slideshow-v1';
+const CACHE_NAME = 'google-photos-slideshow-v2-clean';
 const urlsToCache = [
   './',
   './index.html',
