@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google Photos API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Google Photos API</h1>
+    
+    <p><strong>Instructions:</strong></p>
+    <ol>
+        <li>Click "Login with Google"</li>
+        <li>Allow all permissions</li>
+        <li>Wait for results</li>
+    </ol>
+
+    <button id="loginBtn">🔐 Login with Google</button>
+    <button id="testBtn" style="display:none;">🧪 Test API Call</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // REPLACE WITH YOUR CREDENTIALS
+        const CLIENT_ID = '404117670774-m2c51ak0d7b6hamhe82evpp7pd5qc4th.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+        
+        let tokenClient;
+        let accessToken = null;
+        
+        const resultsDiv = document.getElementById('results');
+        const loginBtn = document.getElementById('loginBtn');
+        const testBtn = document.getElementById('testBtn');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            resultsDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (response) => {
+                    if (response.error) {
+                        log('❌ OAuth Error: ' + JSON.stringify(response), 'error');
+                        return;
+                    }
+                    
+                    accessToken = response.access_token;
+                    log('✅ Access token received!', 'success');
+                    log('📋 Scopes: ' + response.scope);
+                    
+                    loginBtn.style.display = 'none';
+                    testBtn.style.display = 'block';
+                    
+                    // Auto-test
+                    testAPI();
+                },
+            });
+            log('✅ Google Identity Services loaded', 'success');
+        }
+
+        loginBtn.addEventListener('click', () => {
+            log('🔄 Requesting access token...');
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        });
+
+        testBtn.addEventListener('click', testAPI);
+
+        async function testAPI() {
+            if (!accessToken) {
+                log('❌ No access token!', 'error');
+                return;
+            }
+
+            log('🔄 Testing Google Photos API...');
+            
+            try {
+                // Test 1: User Info
+                log('\n--- TEST 1: User Info API ---');
+                const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    log('✅ User Info: ' + userData.email, 'success');
+                } else {
+                    log('❌ User Info failed: ' + userResponse.status, 'error');
+                }
+
+                // Test 2: Albums
+                log('\n--- TEST 2: Photos Library API ---');
+                const albumsResponse = await fetch('https://photoslibrary.googleapis.com/v1/albums?pageSize=10', {
+                    headers: { 
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log('Status: ' + albumsResponse.status);
+
+                if (albumsResponse.ok) {
+                    const albumsData = await albumsResponse.json();
+                    log('✅ Albums loaded successfully!', 'success');
+                    log('Number of albums: ' + (albumsData.albums ? albumsData.albums.length : 0));
+                    if (albumsData.albums && albumsData.albums.length > 0) {
+                        log('First album: ' + albumsData.albums[0].title);
+                    }
+                } else {
+                    const errorData = await albumsResponse.json();
+                    log('❌ Albums failed!', 'error');
+                    log('Error: ' + JSON.stringify(errorData, null, 2), 'error');
+                }
+
+            } catch (error) {
+                log('❌ Exception: ' + error.message, 'error');
+            }
+        }
+    </script>
+
+    <script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
+</body>
+</html>
