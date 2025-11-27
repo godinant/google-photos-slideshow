@@ -75,6 +75,9 @@
                     accessToken = response.access_token;
                     log('✅ Access token received!', 'success');
                     log('📋 Scopes: ' + response.scope);
+                    log('🔑 Token (first 50 chars): ' + accessToken.substring(0, 50) + '...');
+                    log('\n💡 Copy full token from console: console.log(window.testAccessToken)');
+                    window.testAccessToken = accessToken; // Make it accessible in console
                     
                     loginBtn.style.display = 'none';
                     testBtn.style.display = 'block';
