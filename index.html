@@ -831,14 +831,8 @@
         let clockInterval = null;
 
         // ===== GOOGLE API INITIALIZATION =====
-        let gapiInited = false;
+        let gapiInited = true; // Not using gapi anymore, just GIS
         let gisInited = false;
-
-        function gapiLoaded() {
-            // Simple initialization - no gapi.client.init needed
-            gapiInited = true;
-            maybeEnableButtons();
-        }
 
         function gisLoaded() {
             tokenClient = google.accounts.oauth2.initTokenClient({
@@ -852,7 +846,7 @@
 
         function maybeEnableButtons() {
             if (gapiInited && gisInited) {
-                console.log('✅ Google APIs initialized');
+                console.log('✅ Google Identity Services initialized');
             }
         }
 
@@ -1507,8 +1501,7 @@
         observer.observe(slideshowScreen, { attributes: true, attributeFilter: ['style'] });
     </script>
 
-    <!-- Load Google APIs -->
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <!-- Load Google Identity Services (OAuth only, no gapi) -->
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
